@@ -1,7 +1,7 @@
 require "coordconver/version"
-require "coordconver/coord_conver"
+require "coordconver/point"
 
 module Coordconver
-	include CoordConver
+	include Coordconver::Point
 
 end

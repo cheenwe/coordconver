@@ -1,25 +1,15 @@
 module Coordconver
-	module CoordConver
+	class Point
 
-		def self.included(base)
-			base.send :extend, ClassMethods
-		end
+		# 定义一些常量
+		X_PI = 3.14159265358979324 * 3000.0 / 180.0;
+		PI = 3.1415926535897932384626;
+		AA = 6378245.0; #a
+		EE = 0.00669342162296594323; #e
 
-		# Class methods
-		module ClassMethods
-		# class << self
-
-			# 定义一些常量
-			X_PI = 3.14159265358979324 * 3000.0 / 180.0;
-			PI = 3.1415926535897932384626;
-			AA = 6378245.0; #a
-			EE = 0.00669342162296594323; #e
+		class << self
 
 
-		  def initialize(lng, lat)
-		    @lng = lng.to_f
-		    @lat = lat.to_f
-		  end
 
 			def transformlat(lng, lat)
 				lng= lng.to_f
