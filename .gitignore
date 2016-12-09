@@ -1,9 +1,10 @@
-.bundle/
+/.bundle/
 /.yardoc
 Gemfile.lock
 /_yardoc/
 /coverage/
-doc/
+/doc/
 pkg/
 /spec/reports/
-tmp/
+/tmp/
+*.gem

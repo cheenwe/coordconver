@@ -1,7 +1,7 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'coordconver'
+require 'coordconver/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "coordconver"
@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["cheenwe@gmail.com"]
 
   spec.summary       = %q{坐标转换/Coordconver}
-  spec.description   = %q{提供了百度坐标（BD09）、国测局坐标（火星坐标，GCJ02）、和WGS84坐标系之间的转换.}
+  spec.description   = %q{1.提供了百度坐标（BD09）、国测局坐标（火星坐标，GCJ02）、和WGS84坐标系之间的转换. 2.坐标点和经纬度转换的转换。 3.坐标点转位置，位置转坐标点（TODO）。}
   spec.homepage      = "https://github.com/cheenwe/coordconver"
   spec.license       = "MIT"
 
@@ -21,4 +21,5 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler", "~> 1.12"
   spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency "minitest", "~> 4.0"
 end

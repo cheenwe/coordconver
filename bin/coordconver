@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require "coordconver"
+
+puts Coordconver.wgs84_bd09(ARGV[0],ARGV[1] )
