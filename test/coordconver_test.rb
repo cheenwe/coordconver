@@ -27,8 +27,8 @@ class CoordconverTest < Minitest::Test
   # var y = 39.990912172420714;
 	# x: 116.33993386792, y: 39.997907973792
 	def test_bd_wgs
-		assert_equal [116.33993386792, 39.997907973792].map! { |a| a.round(5) },
-			Coordconver.bd_wgs(116.32715863448607, 39.990912172420714).map! { |a| a.round(5) }
+		assert_equal [116.33993386792, 39.997907973792].map! { |a| a.round(4) },
+			Coordconver.bd_wgs(116.32715863448607, 39.990912172420714).map! { |a| a.round(4) }
 	end
 
 	def test_gcj_wgs
@@ -88,9 +88,4 @@ class CoordconverTest < Minitest::Test
 			Coordconver.bd_gcj(116.481499,39.990375).map! { |a| a.round(5) }
 	end
 
-	# 38.65777,104.08296 北纬N38°39′27.97″ 东经E104°04′58.66″
-	def test_cal_degree
-		assert_equal "38°39’27″" ,
-			Coordconver.cal_degree(38.65777)
-	end
 end
