@@ -5,5 +5,4 @@ require "coordconver/degree"
 module Coordconver
   include Coordconver
   include Degree
-
 end

@@ -1,5 +1,5 @@
 module Coordconver
-	class Coordconver
+	module Coordconver
 
 		def self.included(base)
 			base.extend(ClassMethods)
