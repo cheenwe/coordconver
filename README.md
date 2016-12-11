@@ -1,7 +1,11 @@
 # 坐标转换/Coordconver
-1.提供了百度坐标（BD-09）、国测局坐标（火星坐标，GCJ-02）、和 地球坐标( WGS-84) 坐标系之间的转换。
-2.坐标点到经纬度的相互转换
-3.坐标点到地理位置的转换(TODO)
+[![Build Status](https://travis-ci.org/cheenwe/coordconver.svg?branch=master)](https://travis-ci.org/cheenwe/coordconver)
+
+- 1.提供了百度坐标（BD-09）、国测局坐标（火星坐标，GCJ-02）、和 地球坐标( WGS-84) 坐标系之间的转换。
+
+- 2.坐标点到经纬度的相互转换
+
+- 3.坐标点到地理位置的转换(TODO)
 
 ## 安装
 
