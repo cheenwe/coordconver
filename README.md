@@ -28,17 +28,17 @@ gem 'coordconver'
 
 ### 用法
 
-一共提供6种转换方式，传入参数需为**float**类型，如：
+提供6转换方式，传入参数需为**float**类型，如：
 >Coordconver.bd_gcj(lng.to_f, lat.to_f)
 
 |   坐标系      |   转换名称     |   方法|
 |   ----------- |   ------- |   -----   | --------- |
-|  BD-09 ->  GCJ-02  |    百度 -> 谷歌、高德  |   Coordconver.bd_gcjlng, lat)  |
-|  BD-09 ->  WGS-84  |    百度 -> 地球坐标  |   Coordconver.bd_wgslng, lat)  |
-|  GCJ-02 -> WGS-84  |    谷歌、高德 -> 地球坐标  |    Coordconver.gcj_wgslng, lat)  |
-|  GCJ-02 -> BD-09  |    谷歌、高德 -> 百度  |    Coordconver.gcj_bdlng, lat)  |
-|  WGS-84 -> BD-09  |    地球坐标 -> 百度  |    Coordconver.wgs_bdlng, lat)  |
-|  WGS-84 -> GCJ-02 |    地球坐标 -> 谷歌、高德  |    Coordconver.wgs_gcjlng, lat)  |
+|  BD-09 ->  GCJ-02  |    百度 -> 谷歌、高德  |   Coordconver.bd_gcj(lng, lat)  |
+|  BD-09 ->  WGS-84  |    百度 -> 地球坐标  |   Coordconver.bd_wgs(lng, lat)  |
+|  GCJ-02 -> WGS-84  |    谷歌、高德 -> 地球坐标  |    Coordconver.gcj_wgs(lng, lat)  |
+|  GCJ-02 -> BD-09  |    谷歌、高德 -> 百度  |    Coordconver.gcj_bd(lng, lat)  |
+|  WGS-84 -> BD-09  |    地球坐标 -> 百度  |    Coordconver.wgs_bd(lng, lat)  |
+|  WGS-84 -> GCJ-02 |    地球坐标 -> 谷歌、高德  |    Coordconver.wgs_gcj(lng, lat)  |
 
 示例：
 >Coordconver.wgs_bd(121.46873833333332, 31.247138333333336) # => [121.479808223763, 31.25115814844421]
@@ -76,7 +76,7 @@ gem 'coordconver'
 
 ### 用法
 
-一共提供4种转换方式，传入坐标点需为**float**类型，传入经纬度需为**string**类型。
+提供4种转换方式，传入坐标点需为**float**类型，传入经纬度需为**string**类型。
 
 |   转换名称     |   方法|
 |   -----   | --------- |
@@ -104,12 +104,10 @@ gem 'coordconver'
 		114°65’24.6″=114+65/60+24.6/3600=115.00683333333333
 
 
-
 ## 坐标点与地址转换(TODO)
 1.百度地图转换
 
 2.高德地图转换
-
 
 
 
