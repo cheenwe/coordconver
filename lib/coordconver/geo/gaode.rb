@@ -3,22 +3,43 @@ module Coordconver
     module Gaode
       extend self
 
-      # Coordconver::Gaode.geocoding(116.480881,39.989410)
+      # Coordconver::Gaode.regeo(116.480881,39.989410)
       # 116.480881,39.989410-->北京市朝阳区阜通东大街6号
-      def geocoding(lng, lat)
-        url = base_url(lng, lat)
+      def regeo(lng, lat)
+        url = regeo_url(lng, lat)
+        # params = {
+        #   key: gaode_map_key,
+        #   location: lng + "," + lat
+        # }
+
         Utils::Request.get(url, params: nil)
       end
 
+      # Coordconver::Gaode.geo("北京市朝阳区阜通东大街6号")
+      # 116.480881,39.989410-->北京市朝阳区阜通东大街6号
+      def geo(address)
+        url = geo_url
 
-      # params = platform.nil? ? nil : { platform: build_platform(platform) }
-      # url = base_url + alias_value
-      # Utils::Request.get(url, params: params)
+        params = {
+          key: gaode_map_key,
+          address: address
+        }
+
+        Utils::Request.get(url, params: params)
+      end
 
       private
 
-      def base_url(lng, lat)
-        "http://restapi.amap.com/v3/geocode/regeo?key=#{gaode_map_key}&location=#{lng},#{lat}"
+      def regeo_url(lng, lat)
+        base_url + '/regeo' + "?key=#{gaode_map_key}&location=#{lng},#{lat}"
+      end
+
+      def geo_url
+        base_url + '/geo'
+      end
+
+      def base_url
+        Configuration.settings[:gaode_base_url]
       end
 
       def gaode_map_key

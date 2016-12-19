@@ -121,22 +121,46 @@ gem 'coordconver'
 ```ruby
 Coordconver::Client.new(["百度 ak1","百度 ak2"],["高德 key1"," key2"])
 
-Coordconver::Baidu.geocoding(39.983424,116.322987) #百度地图api在线转换
+Coordconver::Baidu.regeo(116.322987, 39.983424) #百度地图api在线坐标转换地址
 
-Coordconver::Gaode.geocoding(116.480881,39.989410) #高德地图api在线转换
+Coordconver::Gaode.regeo(116.480881,39.989410) #高德地图api在线坐标转换地址
+
+Coordconver::Gaode.geo("北京方恒国际中心A座") #高德地图api在线地址转换坐标
+
+Coordconver::Baidu.geo("百度大厦") #百度地图api在线地址转换坐标
 ```
 
 示例：
 
->Coordconver::Client.new(["GCPBvB2wNMBs8krrKbB6HRYvRHe7GgH2"],["2164e7f8798dcafae3eaa6e74d464a5c"])
-
+>Coordconver::Client.new(["xxxxx],["xxxx"])
 
 1.百度地图转换
+[Online API](http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-geocoding)
 
->Coordconver::Baidu.geocoding(39.983424,116.322987)
 
-地理编码：即地址解析，由详细到街道的结构化地址得到百度经纬度信息，例如：“北京市海淀区中关村南大街27号”地址解析的结果是“lng:116.31985,lat:39.959836”。同时，地理编码也支持名胜古迹、标志性建筑名称直接解析返回百度经纬度，例如：“百度大厦”地址解析的结果是“lng:116.30815,lat:40.056885” ，通用的POI检索需求，建议使用Place API。
-逆地理编码：即逆地址解析，由百度经纬度信息得到结构化地址信息，例如：“lat:31.325152,lng:120.558957”逆地址解析的结果是“江苏省苏州市虎丘区塔园路318号”。
+- 地理编码：即地址解析，由详细到街道的结构化地址得到百度经纬度信息
+    例如：“北京市海淀区中关村南大街27号”地址解析的结果是“lng:116.31985,lat:39.959836”。
+
+>Coordconver::Baidu.geo("百度大厦")["result"]["location"].values # => [116.30775539540981, 40.05685561073758]
+
+```json
+{
+    "status": 0,
+    "result": {
+        "location": {
+            "lng": 116.30775539540981,
+            "lat": 40.05685561073758
+        },
+        "precise": 1,
+        "confidence": 80,
+        "level": "商务大厦"
+    }
+}
+```
+
+- 逆地理编码：即逆地址解析，由百度经纬度信息得到结构化地址信息，例如：“lat:31.325152,lng:120.558957”逆地址解析的结果是“江苏省苏州市虎丘区塔园路318号”。
+
+>Coordconver::Baidu.regeo(116.32298699999993,39.98342407140365)["result"]["formatted_address"] # => 北京市海淀区中关村大街27号1101-08室
 
 ```json
 {
@@ -169,25 +193,58 @@ Coordconver::Gaode.geocoding(116.480881,39.989410) #高德地图api在线转换
 
 ```
 
-
 2.高德地图转换
 
-地理编码：将详细的结构化地址转换为高德经纬度坐标，且支持名胜景区、标志性建筑物名称解析为高德经纬度坐标。
+[API](http://lbs.amap.com/api/webservice/guide/api/georegeo/#geo)
+
+- 地理编码：将详细的结构化地址转换为高德经纬度坐标，且支持名胜景区、标志性建筑物名称解析为高德经纬度坐标。
 例如：北京市朝阳区阜通东大街6号-->116.480881,39.989410
           天安门-->116.397499,39.908722
-逆地理编码：将经纬度转换为详细结构化的地址，且返回附近周边的POI信息，以及该经纬度所在的POI信息。
+
+>Coordconver::Gaode.geo("北京方恒国际中心A座")["geocodes"][0]["location"]
+
+```json
+{
+"status" : "1",
+"info" : "OK",
+"infocode" : "10000",
+"count" : "1",
+"geocodes" :
+[
+"0" :
+{
+"formatted_address" : "北京市朝阳区方恒国际中心|A座",
+"province" : "北京市",
+"citycode" : "010",
+"city" : "北京市",
+"district" : "朝阳区",
+...
+"location" : "116.480724,39.989584",
+"level" : "门牌号"
+}
+]
+}
+```
+
+- 逆地理编码：将经纬度转换为详细结构化的地址，且返回附近周边的POI信息，以及该经纬度所在的POI信息。
 例如：116.480881,39.989410-->北京市朝阳区阜通东大街6号
 
-
->Coordconver::Gaode.geocoding(116.480881,39.989410)
+>conver::Gaode.regeo(116.480881,39.989410)['regeocode']["formatted_address"]
 
 
 ```json
-
-{"status"=>"1", "info"=>"OK", "infocode"=>"10000", "regeocode"=>{"formatted_address"=>"北京市朝阳区望京街道方恒国际中心A座北京方恒假日酒店", "addressComponent"=>{"country"=>"中国", "province"=>"北京市", "city"=>[], "citycode"=>"010", "district"=>"朝阳区", "adcode"=>"110105", "township"=>"望京街道", "towncode"=>"110105026000", "neighborhood"=>{"name"=>"方恒国际中心", "type"=>"商务住宅;楼宇;商住两用楼宇"}, "building"=>{"name"=>"方恒国际中心A座", "type"=>"商务住宅;楼宇;商务写字楼"}, "streetNumber"=>{"street"=>"阜通东大街", "number"=>"6-2号楼", "location"=>"116.48129,39.9902869", "direction"=>"东北", "distance"=>"103.552"}, "businessAreas"=>[{"location"=>"116.47089234140496,39.9976009239991", "name"=>"望京", "id"=>"110105"}, {"location"=>"116.47305065693433,39.98350093430656", "name"=>"花家地", "id"=>"110105"}, {"location"=>"116.48976000793644,39.984900765873", "name"=>"大山子", "id"=>"110105"}]}}}
+{
+"status" : "1",
+"info" : "OK",
+"infocode" : "10000",
+"regeocode" :
+{
+"formatted_address" : "北京市朝阳区望京街道方恒国际中心B座方恒国际中心",
+...
+}
+}
 
 ```
-
 
 
 ## Development

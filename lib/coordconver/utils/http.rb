@@ -42,16 +42,9 @@ module Coordconver
           http.request(@request)
         end
       # if raise Timeout::Error retry it for 3 times
-      rescue Net::OpenTimeout, Net::ReadTimeout => e
+      rescue Net::OpenTimeout, Net::ReadTimeout
         (tries -= 1).zero? ? (raise "Time out") : retry
       end
-
-      # def basic_auth(user = nil, password = nil)
-      #   user ||= Config.settings[:app_key]
-      #   password ||= Config.settings[:master_secret]
-      #   @request.basic_auth(user, password)
-      #   self
-      # end
 
       private
 
