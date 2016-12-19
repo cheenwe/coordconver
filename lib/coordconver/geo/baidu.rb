@@ -3,7 +3,15 @@ module Coordconver
     module Baidu
       extend self
 
+      # http://api.map.baidu.com/location/ip?ak=bVcVtFGlzndIhYOlWxsYTkgw0nrpDvLa&coor=bd09ll
+      def ip(ip=nil)
+        url = "http://api.map.baidu.com/location/ip?ak=bVcVtFGlzndIhYOlWxsYTkgw0nrpDvLa&coor=bd09ll&ip=#{ip}"
+
+        Utils::Request.get(url, params: nil)
+      end
+
       # Coordconver::Baidu.regeo(39.983424,116.322987)
+
       def regeo(lng, lat)
         url = regeo_url(lng, lat)
         Utils::Request.get(url, params: nil)

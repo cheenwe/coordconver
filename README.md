@@ -5,7 +5,7 @@
 
 - 2.坐标点到经纬度的相互转换
 
-- 3.坐标点到地理位置的转换
+- 3.坐标点和地理位置的相互转换(百度，高德API)
 
 ## 安装
 
@@ -229,7 +229,7 @@ Coordconver::Baidu.geo("百度大厦") #百度地图api在线地址转换坐标
 - 逆地理编码：将经纬度转换为详细结构化的地址，且返回附近周边的POI信息，以及该经纬度所在的POI信息。
 例如：116.480881,39.989410-->北京市朝阳区阜通东大街6号
 
->conver::Gaode.regeo(116.480881,39.989410)['regeocode']["formatted_address"]
+>Coordconver::Gaode.regeo(116.480881,39.989410)['regeocode']["formatted_address"]
 
 
 ```json
