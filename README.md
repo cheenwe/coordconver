@@ -32,7 +32,7 @@ gem 'coordconver'
 >Coordconver.bd_gcj(lng.to_f, lat.to_f)
 
 |   坐标系      |   转换名称     |   方法|
-|   ----------- |   ------- |   -----   | --------- |
+| ----- | ----- | ----- |
 |  BD-09 ->  GCJ-02  |    百度 -> 谷歌、高德  |   Coordconver.bd_gcj(lng, lat)  |
 |  BD-09 ->  WGS-84  |    百度 -> 地球坐标  |   Coordconver.bd_wgs(lng, lat)  |
 |  GCJ-02 -> WGS-84  |    谷歌、高德 -> 地球坐标  |    Coordconver.gcj_wgs(lng, lat)  |
