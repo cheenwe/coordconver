@@ -1,49 +1,63 @@
+# frozen_string_literal: true
+
 module Coordconver
   module Geo
+    # 高德地图 Web 服务 API
+    # 申请 key: https://console.amap.com/dev/key/app (类型选"Web服务")
     module Gaode
       extend self
 
-      # Coordconver::Gaode.regeo(116.480881,39.989410)
-      # 116.480881,39.989410-->北京市朝阳区阜通东大街6号
-      def regeo(lng, lat)
-        url = regeo_url(lng, lat)
-        # params = {
-        #   key: gaode_map_key,
-        #   location: lng + "," + lat
-        # }
-
-        Utils::Request.get(url, params: nil)
-      end
-
-      # Coordconver::Gaode.geo("北京市朝阳区阜通东大街6号")
-      # 116.480881,39.989410-->北京市朝阳区阜通东大街6号
-      def geo(address)
-        url = geo_url
-
+      # 地理编码: 结构化地址 -> 坐标 (GCJ-02)
+      # Coordconver::Gaode.geo("北京方恒国际中心A座")["geocodes"][0]["location"] # => "116.480724,39.989584"
+      # 支持可选参数: city(城市名), citylimit, batch, ...
+      def geo(address, options = {})
         params = {
           key: gaode_map_key,
           address: address
-        }
+        }.merge(options)
+        request("/geocode/geo", params)
+      end
 
-        Utils::Request.get(url, params: params)
+      # 逆地理编码: 坐标 (GCJ-02) -> 结构化地址
+      # Coordconver::Gaode.regeo(116.480881, 39.989410)["regeocode"]["formatted_address"]
+      # options: extensions(base/all), radius, poitype, ...
+      def regeo(lng, lat, options = {})
+        params = {
+          key: gaode_map_key,
+          location: "#{lng},#{lat}"
+        }.merge(options)
+        request("/geocode/regeo", params)
+      end
+
+      # 便捷方法: 地址 -> [lng, lat] (GCJ-02), 解析失败返回 nil
+      def geo_location(address, options = {})
+        resp = geo(address, options)
+        geocode = resp["geocodes"] && resp["geocodes"][0]
+        loc = geocode && geocode["location"]
+        return nil if loc.nil? || loc.empty?
+
+        loc.split(",").map(&:to_f)
+      end
+
+      # 便捷方法: 坐标 -> 地址字符串 (GCJ-02), 解析失败返回 nil
+      def regeo_address(lng, lat, options = {})
+        resp = regeo(lng, lat, options)
+        resp.dig("regeocode", "formatted_address")
       end
 
       private
 
-      def regeo_url(lng, lat)
-        base_url + '/regeo' + "?key=#{gaode_map_key}&location=#{lng},#{lat}"
-      end
-
-      def geo_url
-        base_url + '/geo'
+      def request(path, params)
+        Utils::Request.get(base_url + path, params: params)
       end
 
       def base_url
-        Configuration.settings[:gaode_base_url]
+        # 兼容旧版本以 /geocode 结尾的 base_url 配置
+        Configuration.settings[:gaode_base_url].sub(%r{/geocode/?\z}, "").sub(%r{/\z}, "")
       end
 
       def gaode_map_key
-        Configuration.settings[:gaode_map_keys].sample
+        Configuration.sample_gaode_key
       end
     end
   end

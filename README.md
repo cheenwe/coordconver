@@ -1,264 +1,252 @@
-# 坐标转换/Coordconver
-[![Build Status](https://travis-ci.org/cheenwe/coordconver.svg?branch=master)](https://travis-ci.org/cheenwe/coordconver)
+# 坐标转换 / Coordconver
 
-- 1.提供了百度坐标（BD-09）、国测局坐标（火星坐标，GCJ-02）、和 地球坐标( WGS-84) 坐标系之间的转换。
+[![CI](https://github.com/cheenwe/coordconver/actions/workflows/ci.yml/badge.svg)](https://github.com/cheenwe/coordconver/actions/workflows/ci.yml)
+[![Gem Version](https://badge.fury.io/rb/coordconver.svg)](https://badge.fury.io/rb/coordconver)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- 2.坐标点到经纬度的相互转换
+一个零依赖的 Ruby 坐标工具库：
 
-- 3.坐标点和地理位置的相互转换(百度，高德API)
+1. **坐标系互转**（纯离线计算，无网络请求）：百度坐标（BD-09）、国测局/火星坐标（GCJ-02）、地球坐标（WGS-84）
+2. **经纬度与度分秒互转**：`38.65777` ⇄ `38°39′27.97″`
+3. **两点球面距离**：Haversine 公式，结果为米
+4. **地址与坐标互转**：封装百度 / 高德 Web 服务 API（地理编码 / 逆地理编码）
+5. **命令行工具**：单点转换、批量文件转换、距离计算
+
+要求 Ruby >= 2.7。零运行时依赖，仅使用标准库。
 
 ## 安装
 
-添加到Gemfile:
+添加到 Gemfile：
 
 ```ruby
 gem 'coordconver'
 ```
 
-执行:
+执行：
 
     $ bundle
 
-或者只安装该GEM:
+或者直接安装：
 
     $ gem install coordconver
 
-
 ## 坐标系转换
 
-### 用法
+### 快速上手
 
-提供6转换方式，传入参数需为**float**类型，如：
->Coordconver.bd_gcj(lng.to_f, lat.to_f)
+```ruby
+require 'coordconver'
 
-|   坐标系      |   转换名称     |   方法|
-| ----- | ----- | ----- |
-|  BD-09 ->  GCJ-02  |    百度 -> 谷歌、高德  |   Coordconver.bd_gcj(lng, lat)  |
-|  BD-09 ->  WGS-84  |    百度 -> 地球坐标  |   Coordconver.bd_wgs(lng, lat)  |
-|  GCJ-02 -> WGS-84  |    谷歌、高德 -> 地球坐标  |    Coordconver.gcj_wgs(lng, lat)  |
-|  GCJ-02 -> BD-09  |    谷歌、高德 -> 百度  |    Coordconver.gcj_bd(lng, lat)  |
-|  WGS-84 -> BD-09  |    地球坐标 -> 百度  |    Coordconver.wgs_bd(lng, lat)  |
-|  WGS-84 -> GCJ-02 |    地球坐标 -> 谷歌、高德  |    Coordconver.wgs_gcj(lng, lat)  |
+wgs = [121.468738, 31.247138]         # WGS-84 (GPS 原始坐标)
+Coordconver.wgs_gcj(*wgs)             # => [121.47327833883615, 31.2452165865549]  (GCJ-02, 高德/谷歌中国)
+Coordconver.wgs_bd(*wgs)              # => [121.47980789007566, 31.251157822142243] (BD-09, 百度)
+```
 
-示例：
->Coordconver.wgs_bd(121.46873833333332, 31.247138333333336) # => [121.479808223763, 31.25115814844421]
+### 全部转换方法
+
+传入参数需为 **Float** 类型，如 `Coordconver.bd_gcj(lng.to_f, lat.to_f)`，返回 `[lng, lat]` 数组。
+
+| 坐标系 | 转换名称 | 方法 | 语义化别名 |
+| ----- | ----- | ----- | ----- |
+| BD-09 -> GCJ-02 | 百度 -> 谷歌、高德 | `Coordconver.bd_gcj(lng, lat)` | `bd09_gcj02` |
+| GCJ-02 -> BD-09 | 谷歌、高德 -> 百度 | `Coordconver.gcj_bd(lng, lat)` | `gcj02_bd09` |
+| GCJ-02 -> WGS-84 | 谷歌、高德 -> 地球坐标 | `Coordconver.gcj_wgs(lng, lat)` | `gcj02_wgs84` |
+| WGS-84 -> GCJ-02 | 地球坐标 -> 谷歌、高德 | `Coordconver.wgs_gcj(lng, lat)` | `wgs84_gcj02` |
+| BD-09 -> WGS-84 | 百度 -> 地球坐标 | `Coordconver.bd_wgs(lng, lat)` | `bd09_wgs84` |
+| WGS-84 -> BD-09 | 地球坐标 -> 百度 | `Coordconver.wgs_bd(lng, lat)` | `wgs84_bd09` |
+
+### 辅助方法
+
+```ruby
+# 判断坐标是否在中国境外(境外 WGS-84 与 GCJ-02 一致, 转换方法会原样返回)
+Coordconver.out_of_china?(121.47, 31.25)   # => false
+
+# 两点球面距离(米), 两点需在同一坐标系下
+Coordconver.distance(116.397428, 39.90923, 121.473701, 31.230416) # => 1068194.1 (北京->上海 约 1068 公里)
+```
 
 ### 坐标系说明
 
-#### 百度坐标系 (BD-09)
-- 百度标准，百度 SDK，百度地图，Geocoding 使用
-
-#### 火星坐标系 (GCJ-02)
-- 中国标准(国测局坐标系)，从国行移动设备中定位获取的坐标数据使用这个坐标系, 由中国国家测绘局制订的地理信息系统的坐标系统
-
-- 由WGS84坐标系经加密后的坐标系
-
-- 谷歌中国地图, 搜搜中国地图, iOS地图(高德), 搜搜, 阿里云, 高德地图, 腾讯
-
-#### 地球坐标系 (WGS-84)
-- 国际标准， 设备一般包含GPS芯片或者北斗芯片获取的经纬度为WGS84地理坐标系
-
-- 谷歌地图采用的是WGS84地理坐标系（中国范围除外）
-
-- ios的原生定位库, osm
-
+| 坐标系 | 说明 | 使用方 |
+| ----- | ----- | ----- |
+| WGS-84 | 国际标准，GPS/北斗芯片原始坐标 | iOS 原生定位、OSM、海外谷歌地图 |
+| GCJ-02 | 国测局标准（火星坐标），WGS-84 加密所得 | 高德、腾讯、谷歌中国、搜搜、阿里云 |
+| BD-09 | 百度标准，GCJ-02 再次加密所得 | 百度地图、百度 SDK |
 
 ### 相关资料
 
 - [各坐标系位置在线查看](http://www.gpsspg.com/maps.htm)
+- [百度地图转换 API](https://lbsyun.baidu.com/jsdemo.htm#a5_2)
+- [高德地图转换 API](https://lbs.amap.com/api/webservice/guide/api/convert/)
 
-- [百度地图转换API](http://lbsyun.baidu.com/jsdemo.htm#a5_2)
-
-- [高德地图转换API](http://lbs.amap.com/api/webservice/guide/api/convert/#convert)
-
-
-## 坐标点与经纬度转换
-
-### 用法
-
-提供4种转换方式，传入坐标点需为**float**类型，传入经纬度需为**string**类型。
-
-|   转换名称     |   方法|
-|   -----   | --------- |
-|   坐标点转度数 |   Coordconver.degree(lng, lat)  |
-|   单个坐标点转度数  |   Coordconver.cal_degree(n)  |
-|   度数点转坐标点 |   Coordconver.undegree(lng_degree, lat_degree)  |
-|   单个度数转坐标点  |   Coordconver.cal_degree(n)  |
-
-
-示例：
-
->Coordconver.degree(38.65777, 104.08296) # => ["38°39′27″","104°4′58″"]
-
->Coordconver.undegree("38°39′27.97″","104°4′58.66″") # => [38.65777,104.08296]
-
-### 相关资料
-		地形图坐标系：我国的地形图采用高斯－克吕格平面直角坐标系。在该坐标系中，横轴：赤道，用Ｙ表示；纵轴：中央经线，用Ｘ表示；坐标原点：中央经线与赤道的交点，用0表示。赤道以南为负，以北为正；中央经线以东为正，以西为负。我国位于北半球，故纵坐标均为正值，但为避免中央经度线以西为负值的情况，将坐标纵轴西移500公里。
-
-		北京54坐标系：1954年我国在北京设立了大地坐标原点，采用克拉索夫斯基椭球体，依此计算出来的各大地控制点的坐标，称为北京54坐标系。
-		GS84坐标系：即世界通用的经纬度坐标系。
-
-		经纬度表示：1884年国际经度会议规定，以通过英国伦敦格林威治天文台子午仪中心的经线为0°经线。从0°经线往东叫东经，往西叫西经，东、西各分180°。习惯上以西经20°和东经160°为分界把地球分为东西两个半球。假如从地轴的正中间将地球切成南北两半，上边的一半叫北半球，下边的一半叫南半球。被切的这个平面，叫赤道面。赤道面与地球表面相交的线叫赤道。纬线从赤道往两极越来越短，到了两极就缩小成一个点了。科学家们把赤道定为0°纬线，从赤道向两极各分为90°，赤道以南叫南纬，赤道以北叫北纬。在计算机或GPS上经纬度经常用度、分、秒和度.度、分.分、秒.秒的混合方式进行表示，度、分、秒间的进制是60进制，度.度、分.分、秒.秒的进制是100进制，换算时一定要注意。可以近似地认为每个纬度之间的距离是不变的111KM,每分间 1.85KM，每秒间31.8M。经度间的距离随纬度增高逐渐减小，可按以下公式计算：
-		Decimal Degrees = Degrees + minutes/60 + seconds/3600
-		例：57°55’56.6″ =57+55/60+56.6/3600=57.9323888888888
-		114°65’24.6″=114+65/60+24.6/3600=115.00683333333333
-
-
-## 坐标点与地址转换
-
-地理编码/逆地理编码API是一类简单的HTTP接口，提供结构化地址与经纬度之间的相互转化服务。
-
-该套API免费对外开放，使用API您需先申请对应的API Key，
-
-- 百度地图 默认配额6000次/天。
-
-- 高德地图API，企业用户单个Key支持200万次/天，5万次/分钟。
-
-防止同一key 使用超额， 建议申请多个key使用让系统随机调用。
-
-### 用法
+## 经纬度与度分秒互转
 
 ```ruby
-Coordconver::Client.new(["百度 ak1","百度 ak2"],["高德 key1"," key2"])
+Coordconver.degree(38.65777, 104.08296)
+# => ["38°39′27.97″", "104°4′58.66″"]
 
-Coordconver::Baidu.regeo(116.322987, 39.983424) #百度地图api在线坐标转换地址
+Coordconver.undegree("38°39′27.97″", "104°4′58.66″")
+# => [38.657769, 104.082961]
 
-Coordconver::Gaode.regeo(116.480881,39.989410) #高德地图api在线坐标转换地址
+# 单值转换, 第二个参数控制秒的小数位(默认 2 位, 传 0 可得整数秒)
+Coordconver.cal_degree(38.65777)     # => "38°39′27.97″"
+Coordconver.cal_degree(38.65777, 0)  # => "38°39′28″"
 
-Coordconver::Gaode.geo("北京方恒国际中心A座") #高德地图api在线地址转换坐标
-
-Coordconver::Baidu.geo("百度大厦") #百度地图api在线地址转换坐标
+# 解析支持多种写法: 38°39′27.97″ / 38°39′27.97" / 38d39m27.97s / 38:39:27.97
+# 负值按西经/南纬处理
+Coordconver.cal_undegree("-38°39′27.97″") # => -38.657769
 ```
 
-示例：
+换算公式：`Decimal Degrees = Degrees + minutes/60 + seconds/3600`
 
->Coordconver::Client.new(["xxxxx],["xxxx"])
+## 命令行工具
 
-1.百度地图转换
-[Online API](http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-geocoding)
+安装 gem 后可直接使用 `coordconver` 命令：
 
+```bash
+# 坐标系转换 (wgs2gcj / gcj2wgs / wgs2bd / bd2wgs / gcj2bd / bd2gcj)
+coordconver wgs2gcj 121.468738 31.247138        # => 121.473278,31.245217
+coordconver wgs84togcj02 121.468738 31.247138   # 同上, 支持完整写法
+coordconver wgs2gcj 121.468738 31.247138 --json # => [121.473278,31.245217]
+coordconver wgs2gcj 121.468738 31.247138 -r 4   # 保留 4 位小数
 
-- 地理编码：即地址解析，由详细到街道的结构化地址得到百度经纬度信息
-    例如：“北京市海淀区中关村南大街27号”地址解析的结果是“lng:116.31985,lat:39.959836”。
+# 度分秒互转
+coordconver dms 38.65777 104.08296              # => 38°39′27.97″,104°4′58.66″
+coordconver dec "38°39′27.97″" "104°4′58.66″"   # => 38.657769,104.082961
 
->Coordconver::Baidu.geo("百度大厦")["result"]["location"].values # => [116.30775539540981, 40.05685561073758]
+# 两点距离(米)
+coordconver dist 116.397428 39.90923 121.473701 31.230416
 
-```json
-{
-    "status": 0,
-    "result": {
-        "location": {
-            "lng": 116.30775539540981,
-            "lat": 40.05685561073758
-        },
-        "precise": 1,
-        "confidence": 80,
-        "level": "商务大厦"
-    }
-}
+# 批量转换: 每行一条 "lng,lat" 或 "lng lat"
+cat points.txt | coordconver wgs2gcj
+echo "121.468738,31.247138" | coordconver gcj2wgs
+
+# 地址 <-> 坐标 (需先配置 key, 见下文)
+coordconver geo --gaode "北京方恒国际中心A座"
+coordconver regeo --baidu 116.322987 39.983424
 ```
 
-- 逆地理编码：即逆地址解析，由百度经纬度信息得到结构化地址信息，例如：“lat:31.325152,lng:120.558957”逆地址解析的结果是“江苏省苏州市虎丘区塔园路318号”。
+## 地址与坐标互转 (百度 / 高德 API)
 
->Coordconver::Baidu.regeo(116.32298699999993,39.98342407140365)["result"]["formatted_address"] # => 北京市海淀区中关村大街27号1101-08室
+地理编码/逆地理编码 API 提供结构化地址与经纬度之间的相互转化服务。使用前需申请对应的 API Key：
 
-```json
-{
-"status": 0,
-"result": {
-"location": {
-"lng": 116.32298699999993,
-"lat": 39.98342407140365
-},
-"formatted_address": "北京市海淀区中关村大街27号1101-08室",
-"business": "中关村,人民大学,苏州街",
-"addressComponent": {
-"country": "中国",
-"country_code": 0,
-"province": "北京市",
-"city": "北京市",
-"district": "海淀区",
-"adcode": "110108",
-"street": "中关村大街",
-"street_number": "27号1101-08室",
-"direction": "附近",
-"distance": "7"
-},
-"pois": [],
-"poiRegions": [],
-"sematic_description": "北京远景国际公寓(中关村店)内0米",
-"cityCode": 131
-}
-}
+- 百度地图开放平台: https://lbsyun.baidu.com/apiconsole/key （创建**服务端**类型 AK，配置 IP 白名单；若选择 SN 校验类型，需同时配置 `baidu_sn`）
+- 高德开放平台: https://console.amap.com/dev/key/app （类型选**Web 服务**）
 
+百度默认配额 6000 次/天；高德个人认证 5000 次/天，企业用户单 Key 可达 200 万次/天。防止同一 key 超额，支持传入多个 key 让系统随机轮询。
+
+### 配置
+
+```ruby
+require 'coordconver'
+
+# 推荐: 全局配置块 (key 支持数组以轮询)
+Coordconver.configure do |config|
+  config.baidu_map_aks = ["百度ak1", "百度ak2"]
+  config.gaode_map_keys = ["高德key1", "高德key2"]
+  # config.baidu_sn = "SN校验密钥"      # 仅 AK 类型为"SN校验"时需要
+  # config.open_timeout = 5             # 可选: 连接超时(秒)
+  # config.read_timeout = 10            # 可选: 读取超时(秒)
+end
 ```
 
-2.高德地图转换
+或兼容旧写法：
 
-[API](http://lbs.amap.com/api/webservice/guide/api/georegeo/#geo)
-
-- 地理编码：将详细的结构化地址转换为高德经纬度坐标，且支持名胜景区、标志性建筑物名称解析为高德经纬度坐标。
-例如：北京市朝阳区阜通东大街6号-->116.480881,39.989410
-          天安门-->116.397499,39.908722
-
->Coordconver::Gaode.geo("北京方恒国际中心A座")["geocodes"][0]["location"]
-
-```json
-{
-"status" : "1",
-"info" : "OK",
-"infocode" : "10000",
-"count" : "1",
-"geocodes" :
-[
-"0" :
-{
-"formatted_address" : "北京市朝阳区方恒国际中心|A座",
-"province" : "北京市",
-"citycode" : "010",
-"city" : "北京市",
-"district" : "朝阳区",
-...
-"location" : "116.480724,39.989584",
-"level" : "门牌号"
-}
-]
-}
+```ruby
+Coordconver::Client.new(["百度ak1", "百度ak2"], ["高德key1"])
 ```
 
-- 逆地理编码：将经纬度转换为详细结构化的地址，且返回附近周边的POI信息，以及该经纬度所在的POI信息。
-例如：116.480881,39.989410-->北京市朝阳区阜通东大街6号
+未配置 key 就调用 API 会抛出 `Coordconver::ConfigurationError`，错误信息会提示如何配置。
 
->Coordconver::Gaode.regeo(116.480881,39.989410)['regeocode']["formatted_address"]
+### 地理编码 (地址 -> 坐标)
 
+```ruby
+# 百度, 返回完整 JSON (BD-09 坐标)
+Coordconver::Baidu.geo("百度大厦")["result"]["location"]
+# => {"lng"=>116.30775539540981, "lat"=>40.05685561073758}
+Coordconver::Baidu.geo("百度大厦", city: "北京")   # 支持限定城市等官方可选参数
 
-```json
-{
-"status" : "1",
-"info" : "OK",
-"infocode" : "10000",
-"regeocode" :
-{
-"formatted_address" : "北京市朝阳区望京街道方恒国际中心B座方恒国际中心",
-...
-}
-}
+# 便捷方法, 解析失败返回 nil
+Coordconver::Baidu.geo_location("百度大厦")  # => [116.30775539540981, 40.05685561073758]
 
+# 高德, 返回完整 JSON (GCJ-02 坐标)
+Coordconver::Gaode.geo("北京方恒国际中心A座")["geocodes"][0]["location"]
+# => "116.480724,39.989584"
+Coordconver::Gaode.geo_location("北京方恒国际中心A座")  # => [116.480724, 39.989584]
 ```
 
+### 逆地理编码 (坐标 -> 地址)
+
+```ruby
+# 百度 (输入 BD-09 坐标)
+Coordconver::Baidu.regeo(116.322987, 39.983424)["result"]["formatted_address"]
+# => "北京市海淀区中关村大街27号1101-08室"
+Coordconver::Baidu.regeo_address(116.322987, 39.983424)
+# => "北京市海淀区中关村大街27号1101-08室"
+
+# 高德 (输入 GCJ-02 坐标)
+Coordconver::Gaode.regeo(116.480881, 39.989410)["regeocode"]["formatted_address"]
+# => "北京市朝阳区望京街道方恒国际中心B座方恒国际中心"
+Coordconver::Gaode.regeo_address(116.480881, 39.989410)
+
+# 拿到的是 GPS(WGS-84) 坐标想直接查地址? 先转成对应坐标系:
+gcj = Coordconver.wgs_gcj(lng, lat)
+Coordconver::Gaode.regeo_address(*gcj)
+```
+
+### IP 定位 (百度)
+
+```ruby
+Coordconver::Baidu.ip          # 当前出口 IP 定位
+Coordconver::Baidu.ip("8.8.8.8")
+```
+
+### 错误处理
+
+```ruby
+begin
+  Coordconver::Gaode.regeo_address(116.48, 39.98)
+rescue Coordconver::ConfigurationError => e
+  # 未配置 key
+rescue Coordconver::NetworkError => e
+  # 超时/连接失败/响应非 JSON (内部已自动重试 3 次)
+rescue Coordconver::Error => e
+  # 基类, 兜底
+end
+```
+
+服务端业务错误（如 key 无效、配额超限）不会抛异常，返回原始 JSON，通过 `status` 字段判断：百度 `status == 0` 为成功，高德 `status == "1"` 为成功。
+
+## 升级说明 (0.x -> 1.0)
+
+- 修复 `bd_wgs` 方向 bug（0.x 版本返回的是错误结果），并增加回归测试
+- 百度地理编码升级到 Geocoding API v3（v2 接口已下线），默认走 HTTPS
+- `cal_degree` 默认保留两位小数秒（`cal_degree(n, 0)` 可得旧版整数秒输出）
+- 移除源码中硬编码的 key，调用 API 前必须先配置
+- 支持 Ruby 2.7 ~ 3.4；CI 由 Travis 迁移至 GitHub Actions
+- 新增：`distance`、`out_of_china?`、语义化别名、CLI 工具、统一错误体系、SN 校验支持
+
+完整变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+检出代码后，运行 `bin/setup` 安装依赖，`rake test` 运行测试（全部离线，无需 API key）。
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+需要在线联调时：
+
+```bash
+COORDCONVER_LIVE_TEST=1 \
+COORDCONVER_BAIDU_AK=你的百度ak \
+COORDCONVER_GAODE_KEY=你的高德key \
+rake test
+```
+
+本地安装：`bundle exec rake install`。发布新版本：更新 `lib/coordconver/version.rb` 后执行 `bundle exec rake release`。
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/cheenwe/coordconver.
-
+欢迎提交 Bug 报告和 Pull Request：https://github.com/cheenwe/coordconver
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
-
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

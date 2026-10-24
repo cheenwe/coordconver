@@ -1,70 +1,97 @@
-require 'net/http'
-require 'json'
+# frozen_string_literal: true
+
+require "net/http"
+require "json"
 
 module Coordconver
   module Utils
+    # 轻量 HTTP 客户端, 仅依赖标准库。
+    # 网络层失败(超时/连接错误/非 2xx)会自动重试, 重试耗尽后抛出 Coordconver::NetworkError。
     class Http
-
-      DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36"
-      DEFAULT_OPEN_TIMEOUT = 20
-      DEFAULT_READ_TIMEOUT = 120
+      DEFAULT_OPEN_TIMEOUT = 5
+      DEFAULT_READ_TIMEOUT = 10
       DEFAULT_RETRY_TIMES = 3
-      RETRY_SLEEP_TIME = 3
+      RETRY_BASE_SLEEP = 0.5
 
       HTTP_VERB_MAP = {
-        get:    Net::HTTP::Get,
-        post:   Net::HTTP::Post,
-        put:    Net::HTTP::Put,
+        get: Net::HTTP::Get,
+        post: Net::HTTP::Post,
+        put: Net::HTTP::Put,
         delete: Net::HTTP::Delete
-      }
+      }.freeze
 
       DEFAULT_HEADERS = {
-        'user-agent' => DEFAULT_USER_AGENT,
-        'accept' => 'application/json',
-        'content-type' => 'application/json',
-        'connection' => 'close'
-      }
+        "user-agent" => "coordconver/#{Coordconver::VERSION} (+https://github.com/cheenwe/coordconver)",
+        "accept" => "application/json"
+      }.freeze
 
-      def initialize(method, url, params: nil, body: nil, headers: {}, opts: {})
-        method = method.downcase.to_sym
-        err_msg = "http method #{method} is not supported"
-        raise err_msg unless HTTP_VERB_MAP.keys.include?(method)
+      RETRYABLE_ERRORS = [
+        Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNRESET,
+        Errno::ECONNREFUSED, Errno::ETIMEDOUT, SocketError, EOFError
+      ].freeze
+
+      def initialize(method, url, params: nil, body: nil, headers: {})
+        method = method.to_s.downcase.to_sym
+        raise ArgumentError, "不支持的 HTTP method: #{method}" unless HTTP_VERB_MAP.key?(method)
+
         @uri = URI(url)
-        @uri.query = URI.encode_www_form(params) unless params.nil?
-        @request = prepare_request(method, body, headers)
-        @opts = opts
+        @uri.query = build_query(params) if params && !params.empty?
+        @method = method
+        @body = body
+        @headers = headers
       end
 
       def send_request
-        tries ||= DEFAULT_RETRY_TIMES
-        opts ||= default_opts.merge @opts
-        Net::HTTP.start(@uri.host, @uri.port, opts) do |http|
-          http.request(@request)
+        attempts = 0
+        begin
+          attempts += 1
+          perform
+        rescue *RETRYABLE_ERRORS => e
+          raise NetworkError, "#{@uri.host} 请求失败: #{e.class}: #{e.message}" if attempts >= DEFAULT_RETRY_TIMES
+
+          sleep(RETRY_BASE_SLEEP * (2**(attempts - 1)))
+          retry
         end
-      # if raise Timeout::Error retry it for 3 times
-      rescue Net::OpenTimeout, Net::ReadTimeout
-        (tries -= 1).zero? ? (raise "Time out") : retry
       end
 
       private
 
-        def prepare_request(method, body, headers)
-          headers = DEFAULT_HEADERS.merge(headers)
-          request = HTTP_VERB_MAP[method].new @uri
-          request.initialize_http_header(headers)
-          request.body = body.to_json unless body.nil?
-          request
+      def perform
+        opts = {
+          use_ssl: @uri.scheme == "https",
+          open_timeout: open_timeout,
+          read_timeout: read_timeout
+        }
+        Net::HTTP.start(@uri.host, @uri.port, **opts) do |http|
+          response = http.request(build_request)
+          unless response.is_a?(Net::HTTPSuccess)
+            raise NetworkError, "#{@uri.host} 返回 HTTP #{response.code}"
+          end
+
+          response
         end
+      end
 
+      def build_request
+        request = HTTP_VERB_MAP[@method].new(@uri)
+        request.initialize_http_header(DEFAULT_HEADERS.merge(@headers))
+        request.body = @body.to_json if @body
+        request
+      end
 
-        def default_opts
-          {
-            use_ssl: 'https' == @uri.scheme,
-            open_timeout: DEFAULT_OPEN_TIMEOUT,
-            read_timeout: DEFAULT_READ_TIMEOUT
-          }
-        end
+      def build_query(params)
+        URI.encode_www_form(params)
+      end
 
+      def open_timeout
+        configured = Coordconver::Geo::Configuration.configured? && Coordconver::Geo::Configuration.settings[:open_timeout]
+        configured || DEFAULT_OPEN_TIMEOUT
+      end
+
+      def read_timeout
+        configured = Coordconver::Geo::Configuration.configured? && Coordconver::Geo::Configuration.settings[:read_timeout]
+        configured || DEFAULT_READ_TIMEOUT
+      end
     end
   end
 end
