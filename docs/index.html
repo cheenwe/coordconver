@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>坐标转换在线试用 · coordconver</title>
+<style>
+  :root {
+    --bg: #f6f8fa; --card: #ffffff; --ink: #1f2328; --muted: #656d76;
+    --line: #d0d7de; --accent: #0969da; --accent-ink: #ffffff;
+    --ok-bg: #dafbe1; --err: #cf222e; --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  header { background: #24292f; color: #fff; padding: 28px 16px 24px; text-align: center; }
+  header h1 { margin: 0 0 6px; font-size: 26px; }
+  header h1 code { font-family: var(--mono); background: none; color: #79c0ff; }
+  header p { margin: 0; color: #c9d1d9; font-size: 14px; }
+  header a { color: #79c0ff; }
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 48px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 20px; margin-top: 20px; }
+  .card h2 { margin: 0 0 4px; font-size: 17px; }
+  .card .desc { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  label { font-size: 13px; color: var(--muted); display: block; margin: 10px 0 4px; }
+  textarea, input[type=text], input[type=number], select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: 14px; font-family: var(--mono); background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 96px; resize: vertical; }
+  textarea[readonly] { background: var(--bg); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 160px; }
+  button {
+    margin-top: 12px; padding: 8px 18px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--accent); color: var(--accent-ink); font-size: 14px; cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--ink); }
+  button:hover { filter: brightness(1.05); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .result { margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; word-break: break-all; display: none; }
+  .result.ok { display: block; background: var(--ok-bg); }
+  .result.err { display: block; background: #ffebe9; color: var(--err); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .check { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .check input { width: auto; }
+  table.ref { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.ref td { border-top: 1px solid var(--line); padding: 6px 8px; }
+  table.ref td:first-child { font-family: var(--mono); color: var(--accent); white-space: nowrap; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 0 16px 40px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><code>coordconver</code> 坐标转换在线试用</h1>
+  <p>纯前端实现, 与 <a href="https://github.com/cheenwe/coordconver">Ruby gem</a> 算法数值一致 · 无需安装即可体验</p>
+</header>
+<main>
+
+  <div class="card">
+    <h2>坐标系转换</h2>
+    <p class="desc">WGS-84(地球/GPS) / GCJ-02(火星/高德·腾讯) / BD-09(百度) 互转。支持批量: 每行一条 "经度,纬度"。</p>
+    <div class="row">
+      <div>
+        <label for="from">源坐标系</label>
+        <select id="from">
+          <option value="wgs">WGS-84 地球坐标 (GPS)</option>
+          <option value="gcj">GCJ-02 火星坐标 (高德/腾讯)</option>
+          <option value="bd">BD-09 百度坐标</option>
+        </select>
+      </div>
+      <div>
+        <label for="to">目标坐标系</label>
+        <select id="to">
+          <option value="gcj">GCJ-02 火星坐标 (高德/腾讯)</option>
+          <option value="wgs">WGS-84 地球坐标 (GPS)</option>
+          <option value="bd">BD-09 百度坐标</option>
+        </select>
+      </div>
+    </div>
+    <label for="conv-in">输入坐标</label>
+    <textarea id="conv-in" placeholder="121.468738,31.247138&#10;116.481499,39.990475"></textarea>
+    <div class="check"><input type="checkbox" id="precise"><label for="precise" style="margin:0">使用精确逆变换 (目标为 WGS-84 时, 厘米级, 稍慢)</label></div>
+    <button id="conv-run">转换</button>
+    <button class="secondary" id="conv-example">填入示例</button>
+    <label for="conv-out">结果</label>
+    <textarea id="conv-out" readonly></textarea>
+    <div class="result" id="conv-msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>经纬度 ⇄ 度分秒</h2>
+    <div class="grid2">
+      <div>
+        <label for="dms-in">十进制度 (如 38.65777,104.08296)</label>
+        <input type="text" id="dms-in" value="38.65777,104.08296">
+        <button id="dms-run">转度分秒</button>
+        <div class="result" id="dms-out"></div>
+      </div>
+      <div>
+        <label for="undms-in">度分秒 (如 38°39′27.97″,104°4′58.66″)</label>
+        <input type="text" id="undms-in" value='38°39′27.97″,104°4′58.66″'>
+        <button id="undms-run">转十进制度</button>
+        <div class="result" id="undms-out"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>距离 / 方位角 / 偏移点</h2>
+    <p class="desc">两点需在同一坐标系下; 方位角以正北为 0°, 顺时针 0-360°。</p>
+    <div class="row">
+      <div><label for="p1">起点 (经度,纬度)</label><input type="text" id="p1" value="116.397428,39.90923"></div>
+      <div><label for="p2">终点 (经度,纬度)</label><input type="text" id="p2" value="121.473701,31.230416"></div>
+    </div>
+    <button id="geo-run">计算距离与方位角</button>
+    <div class="result" id="geo-out"></div>
+    <div class="row" style="margin-top:12px">
+      <div><label for="dp-bearing">方位角 (度)</label><input type="number" id="dp-bearing" value="153"></div>
+      <div><label for="dp-dist">距离 (米)</label><input type="number" id="dp-dist" value="100000"></div>
+    </div>
+    <button id="dp-run">从起点偏移</button>
+    <div class="result" id="dp-out"></div>
+  </div>
+
+  <div class="card">
+    <h2>高斯-克吕格投影</h2>
+    <p class="desc">经纬度 ⇄ 高斯平面坐标 (米), 支持测绘常用椭球与 3°/6° 带号。</p>
+    <div class="row">
+      <div>
+        <label for="gk-ellipsoid">椭球</label>
+        <select id="gk-ellipsoid">
+          <option value="cgcs2000">CGCS2000</option>
+          <option value="wgs84">WGS-84</option>
+          <option value="krassovsky">北京54 (克拉索夫斯基)</option>
+          <option value="iag75">西安80 (IAG-75)</option>
+        </select>
+      </div>
+      <div>
+        <label for="gk-zone">投影带</label>
+        <select id="gk-zone"><option value="6">6° 带</option><option value="3">3° 带</option></select>
+      </div>
+      <div><label for="gk-cm">中央经线 (度, 反算必填)</label><input type="number" id="gk-cm" value="120"></div>
+    </div>
+    <div class="row">
+      <div><label for="gk-lnglat">经纬度 (经度,纬度)</label><input type="text" id="gk-lnglat" value="121.47,31.24"></div>
+      <div><label for="gk-xy">平面坐标 (东坐标,北坐标)</label><input type="text" id="gk-xy" placeholder="640045.58,3458515.34"></div>
+    </div>
+    <button id="gk-run">正算 (左 → 右)</button>
+    <button class="secondary" id="invgk-run">反算 (右 → 左)</button>
+    <div class="result" id="gk-out"></div>
+  </div>
+
+  <div class="card">
+    <h2>坐标系速查</h2>
+    <table class="ref">
+      <tr><td>WGS-84</td><td>国际标准, GPS/北斗芯片原始坐标 — iOS 原生定位, OSM, 海外谷歌地图</td></tr>
+      <tr><td>GCJ-02</td><td>国测局火星坐标, WGS-84 加密所得 — 高德, 腾讯, 谷歌中国</td></tr>
+      <tr><td>BD-09</td><td>百度标准, GCJ-02 再次加密所得 — 百度地图, 百度 SDK</td></tr>
+    </table>
+  </div>
+
+</main>
+<footer>
+  本页为 <a href="https://github.com/cheenwe/coordconver">coordconver</a> 的前端试用版 ·
+  地址⇄坐标的地理编码 (百度/高德/腾讯 API) 请在 Ruby/CLI 中使用 ·
+  <a href="https://rubygems.org/gems/coordconver">gem install coordconver</a>
+</footer>
+
+<script src="cc-algorithms.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var cc = window.CC;
+
+  function parsePair(text) {
+    var nums = String(text).split(/[,\s]+/).filter(Boolean).map(Number);
+    if (nums.length < 2 || nums.some(isNaN)) throw new Error("坐标格式应为: 经度,纬度");
+    return nums;
+  }
+
+  function show(id, text, isError) {
+    var el = $(id);
+    el.textContent = text;
+    el.className = "result " + (isError ? "err" : "ok");
+  }
+
+  function fmt(p) { return p[0].toFixed(6) + "," + p[1].toFixed(6); }
+
+  // ---------- 坐标系转换 ----------
+  var CONV = {
+    wgs: { gcj: cc.wgs2gcj, bd: cc.wgs2bd },
+    gcj: { wgs: function (l, a, precise) { return precise ? cc.gcj2wgsPrecise(l, a) : cc.gcj2wgs(l, a); }, bd: cc.gcj2bd },
+    bd: { wgs: function (l, a, precise) { return precise ? cc.bd2wgsPrecise(l, a) : cc.bd2wgs(l, a); }, gcj: cc.bd2gcj }
+  };
+
+  $("conv-run").onclick = function () {
+    try {
+      var from = $("from").value, to = $("to").value;
+      if (from === to) throw new Error("源坐标系与目标坐标系相同");
+      var fn = CONV[from][to];
+      var precise = $("precise").checked;
+      var lines = $("conv-in").value.split("\n").filter(function (l) { return l.trim(); });
+      if (!lines.length) throw new Error("请输入坐标");
+      var out = lines.map(function (line) {
+        var p = parsePair(line);
+        return fmt(fn(p[0], p[1], precise));
+      }).join("\n");
+      $("conv-out").value = out;
+      show("conv-msg", "已转换 " + lines.length + " 个点");
+    } catch (e) {
+      show("conv-msg", "错误: " + e.message, true);
+    }
+  };
+  $("conv-example").onclick = function () {
+    $("conv-in").value = "121.468738,31.247138\n116.481499,39.990475\n104.08296,30.659462";
+    show("conv-msg", "示例已填入 (WGS-84 坐标), 点击\"转换\"试试");
+  };
+
+  // ---------- 度分秒 ----------
+  $("dms-run").onclick = function () {
+    try {
+      var p = parsePair($("dms-in").value);
+      show("dms-out", cc.toDMS(p[0]) + "," + cc.toDMS(p[1]));
+    } catch (e) { show("dms-out", "错误: " + e.message, true); }
+  };
+  $("undms-run").onclick = function () {
+    try {
+      var parts = $("undms-in").value.split(/[,\s]+/).filter(Boolean);
+      if (parts.length < 2) throw new Error("需要两个度分秒值");
+      show("undms-out", cc.fromDMS(parts[0]) + "," + cc.fromDMS(parts[1]));
+    } catch (e) { show("undms-out", "错误: " + e.message, true); }
+  };
+
+  // ---------- 距离/方位角/偏移 ----------
+  $("geo-run").onclick = function () {
+    try {
+      var a = parsePair($("p1").value), b = parsePair($("p2").value);
+      show("geo-out",
+        "距离: " + cc.distance(a[0], a[1], b[0], b[1]).toLocaleString() + " 米\n" +
+        "方位角: " + cc.bearing(a[0], a[1], b[0], b[1]).toFixed(2) + "°");
+    } catch (e) { show("geo-out", "错误: " + e.message, true); }
+  };
+  $("dp-run").onclick = function () {
+    try {
+      var a = parsePair($("p1").value);
+      var b = cc.destinationPoint(a[0], a[1], Number($("dp-bearing").value), Number($("dp-dist").value));
+      show("dp-out", "偏移点: " + fmt(b));
+    } catch (e) { show("dp-out", "错误: " + e.message, true); }
+  };
+
+  // ---------- 高斯-克吕格 ----------
+  function gkOpts() {
+    return {
+      ellipsoid: $("gk-ellipsoid").value,
+      zoneWidth: Number($("gk-zone").value),
+      centralMeridian: $("gk-cm").value === "" ? null : Number($("gk-cm").value)
+    };
+  }
+  $("gk-run").onclick = function () {
+    try {
+      var p = parsePair($("gk-lnglat").value);
+      var xy = cc.gaussKruger(p[0], p[1], gkOpts());
+      $("gk-xy").value = xy[0] + "," + xy[1];
+      var zone = cc.zoneMeridian(p[0], gkOpts().zoneWidth);
+      show("gk-out", "带号 " + zone[0] + " · 中央经线 " + zone[1] + "° · 东坐标 " + xy[0] + " · 北坐标 " + xy[1]);
+    } catch (e) { show("gk-out", "错误: " + e.message, true); }
+  };
+  $("invgk-run").onclick = function () {
+    try {
+      var xy = parsePair($("gk-xy").value);
+      var opts = gkOpts();
+      if (opts.centralMeridian === null) throw new Error("反算必须填写中央经线");
+      var ll = cc.inverseGaussKruger(xy[0], xy[1], opts);
+      $("gk-lnglat").value = ll[0] + "," + ll[1];
+      show("gk-out", "经度 " + ll[0] + " · 纬度 " + ll[1]);
+    } catch (e) { show("gk-out", "错误: " + e.message, true); }
+  };
+})();
+</script>
+</body>
+</html>

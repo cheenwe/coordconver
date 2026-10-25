@@ -25,6 +25,12 @@ jobs:
         run: |
           exe/coordconver wgs2gcj 121.468738 31.247138
           exe/coordconver wgs2gcj 121.468738 31.247138 --json
+          exe/coordconver wgs2gcj 121.468738 31.247138 --geojson
           echo "121.468738,31.247138" | exe/coordconver gcj2wgs
+          printf "lng,lat\n121.468738,31.247138\n" | exe/coordconver wgs2gcj --csv
           exe/coordconver dms 38.65777 104.08296
           exe/coordconver dist 116.397428 39.90923 121.473701 31.230416
+          exe/coordconver bearing 116.397428 39.90923 121.473701 31.230416
+          exe/coordconver dest 116.397428 39.90923 153 100000
+          exe/coordconver gk 121.47 31.24 --zone3
+          exe/coordconver invgk 640045.58 3458515.34 --cm 120

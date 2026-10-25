@@ -4,15 +4,14 @@
 # 坐标转换命令行工具
 #
 #   coordconver wgs2gcj 121.468738 31.247138    # 单点坐标系转换
-#   coordconver gcj2bd  121.473279 31.245217
-#   coordconver dms     38.65777 104.08296      # 十进制度 -> 度分秒
-#   coordconver dec     "38°39′27.97″" "104°4′58.66″"   # 度分秒 -> 十进制度
-#   coordconver dist    116.397 39.909 121.473 31.230   # 两点球面距离(米)
+#   coordconver dms 38.65777 104.08296          # 十进制度 -> 度分秒
+#   coordconver bearing 116.397 39.909 121.474 31.230  # 两点方位角(度)
+#   coordconver dest 116.397 39.909 153 1000    # 沿方位角偏移后的坐标
+#   coordconver gk 121.47 31.24 --zone3         # 高斯-克吕格正算
 #   cat points.txt | coordconver wgs2gcj        # 批量: 每行 "lng,lat" 或 "lng lat"
-#   coordconver geo --gaode "北京方恒国际中心A座"   # 地址 -> 坐标 (需 API key)
-#   coordconver regeo --baidu 116.322987 39.983424 # 坐标 -> 地址 (需 API key)
 
 require "optparse"
+require "csv"
 require "json"
 
 lib = File.expand_path("../lib", __dir__)
@@ -54,21 +53,37 @@ def parse_coords(args)
   coords
 end
 
-options = { round: 6, json: false }
+def line_coords(line, csv_mode)
+  if csv_mode
+    row = CSV.parse_line(line)
+    return [] unless row
+
+    nums = row.select { |c| c && c.match?(/\A[+-]?\d+(\.\d+)?\z/) }
+    nums.map(&:to_f)
+  else
+    line.split(/[,\s]+/).reject(&:empty?).map(&:to_f)
+  end
+end
+
+options = { round: 6, csv: false }
 parser = OptionParser.new do |opts|
-  opts.banner = "coordconver #{Coordconver::VERSION} — 坐标系/度分秒转换命令行工具"
+  opts.banner = "coordconver #{Coordconver::VERSION} — 坐标转换命令行工具"
 
   opts.separator ""
-  opts.separator "坐标系转换 (WGS-84 地球 / GCJ-02 火星·高德 / BD-09 百度):"
+  opts.separator "坐标系转换 (WGS-84 地球 / GCJ-02 火星 / BD-09 百度):"
   opts.separator "  coordconver <转换名> <lng> <lat>   转换名如 wgs2gcj, gcj2bd, wgs84togcj02"
 
   opts.separator ""
   opts.separator "其他命令:"
-  opts.separator "  dms  <lng> <lat>                    十进制度转度分秒"
-  opts.separator "  dec  <度分秒> <度分秒>              度分秒转十进制度"
-  opts.separator "  dist <lng1> <lat1> <lng2> <lat2>    两点球面距离(米)"
-  opts.separator "  geo  <地址> --baidu|--gaode         地址转坐标(需 API key)"
-  opts.separator "  regeo <lng> <lat> --baidu|--gaode   坐标转地址(需 API key)"
+  opts.separator "  dms  <lng> <lat>                     十进制度转度分秒"
+  opts.separator "  dec  <度分秒> <度分秒>               度分秒转十进制度"
+  opts.separator "  dist <lng1> <lat1> <lng2> <lat2>     两点球面距离(米)"
+  opts.separator "  bearing <lng1> <lat1> <lng2> <lat2>  两点初始方位角(度, 正北为0)"
+  opts.separator "  dest <lng> <lat> <方位角> <距离米>   沿方位角偏移后的坐标"
+  opts.separator "  gk <lng> <lat>                       高斯-克吕格正算 -> [东坐标, 北坐标]"
+  opts.separator "  invgk <x> <y> --cm 中央经线          高斯-克吕格反算"
+  opts.separator "  geo <地址> --baidu|--gaode|--tencent 地址转坐标(需 API key)"
+  opts.separator "  regeo <lng> <lat> --baidu|--gaode|--tencent  坐标转地址(需 API key)"
   opts.separator ""
   opts.separator "批量模式: 未给坐标参数时从 stdin 读取, 每行一条 \"lng,lat\" 或 \"lng lat\""
 
@@ -76,11 +91,22 @@ parser = OptionParser.new do |opts|
   opts.separator "选项:"
   opts.on("--baidu", "geo/regeo 使用百度地图 API") { options[:provider] = "baidu" }
   opts.on("--gaode", "geo/regeo 使用高德地图 API (默认)") { options[:provider] = "gaode" }
+  opts.on("--tencent", "geo/regeo 使用腾讯地图 API") { options[:provider] = "tencent" }
+  opts.on("--cache", "geo/regeo 启用进程内结果缓存") { options[:cache] = true }
+  opts.on("--csv", "批量输入按 CSV 行解析(自动跳过表头)") { options[:csv] = true }
   opts.on("-j", "--json", "以 JSON 数组输出") { options[:json] = true }
+  opts.on("--geojson", "转换结果以 GeoJSON 输出") { options[:geojson] = true }
   opts.on("-r", "--round N", Integer, "小数位数, 默认 6") { |v| options[:round] = v }
+  opts.separator ""
+  opts.separator "高斯-克吕格选项:"
+  opts.on("--cm 度", Float, "中央经线(gk 可选, invgk 必填)") { |v| options[:cm] = v }
+  opts.on("--zone3", "按 3° 带推算中央经线(默认 6° 带)") { options[:zone_width] = 3 }
+  opts.on("--zone6", "按 6° 带推算中央经线") { options[:zone_width] = 6 }
+  opts.on("--ellipsoid 名称", "cgcs2000(默认)/wgs84/krassovsky/iag75") { |v| options[:ellipsoid] = v }
   opts.on("-h", "--help", "显示帮助") { puts opts; exit 0 }
   opts.on("-v", "--version", "显示版本") { puts "coordconver #{Coordconver::VERSION}"; exit 0 }
 end
+
 parser.parse!(ARGV)
 
 def configure_from_env(provider)
@@ -89,6 +115,8 @@ def configure_from_env(provider)
       c.baidu_map_aks = ENV["COORDCONVER_BAIDU_AK"].split(",").map(&:strip)
     elsif provider == "gaode" && ENV["COORDCONVER_GAODE_KEY"]
       c.gaode_map_keys = ENV["COORDCONVER_GAODE_KEY"].split(",").map(&:strip)
+    elsif provider == "tencent" && ENV["COORDCONVER_TENCENT_KEY"]
+      c.tencent_map_keys = ENV["COORDCONVER_TENCENT_KEY"].split(",").map(&:strip)
     end
   end
 end
@@ -96,6 +124,19 @@ end
 def emit(result, options)
   rounded = result.map { |v| v.is_a?(Numeric) ? v.round(options[:round]) : v }
   options[:json] ? puts(JSON.generate(rounded)) : puts(rounded.join(","))
+end
+
+def emit_features(coords_list, options)
+  features = coords_list.map do |lng, lat|
+    { "type" => "Feature",
+      "geometry" => Coordconver.to_geojson(lng, lat),
+      "properties" => {} }
+  end
+  if features.size == 1
+    puts JSON.generate(features[0])
+  else
+    puts JSON.generate({ "type" => "FeatureCollection", "features" => features })
+  end
 end
 
 command = ARGV.shift
@@ -112,11 +153,42 @@ begin
   when "dist"
     usage_and_exit("dist 需要 <lng1> <lat1> <lng2> <lat2> 四个参数") if ARGV.size < 4
     puts Coordconver.distance(Float(ARGV[0]), Float(ARGV[1]), Float(ARGV[2]), Float(ARGV[3]))
+  when "bearing"
+    usage_and_exit("bearing 需要 <lng1> <lat1> <lng2> <lat2> 四个参数") if ARGV.size < 4
+    puts Coordconver.bearing(Float(ARGV[0]), Float(ARGV[1]), Float(ARGV[2]), Float(ARGV[3])).round(2)
+  when "dest"
+    usage_and_exit("dest 需要 <lng> <lat> <方位角> <距离米> 四个参数") if ARGV.size < 4
+    result = Coordconver.destination_point(Float(ARGV[0]), Float(ARGV[1]), Float(ARGV[2]), Float(ARGV[3]))
+    emit(result, options)
+  when "gk", "invgk"
+    if command.downcase == "gk"
+      usage_and_exit("gk 需要 <lng> <lat> 两个参数") if ARGV.size < 2
+      result = Coordconver.gauss_kruger(
+        Float(ARGV[0]), Float(ARGV[1]),
+        central_meridian: options[:cm],
+        zone_width: options[:zone_width] || 6,
+        ellipsoid: options[:ellipsoid] || :cgcs2000
+      )
+      emit(result, { round: 2 })
+    else
+      usage_and_exit("invgk 需要 <x> <y> 并指定 --cm 中央经线") if ARGV.size < 2 || options[:cm].nil?
+      result = Coordconver.inverse_gauss_kruger(
+        Float(ARGV[0]), Float(ARGV[1]),
+        central_meridian: options[:cm],
+        ellipsoid: options[:ellipsoid] || :cgcs2000
+      )
+      emit(result, options)
+    end
   when "geo"
     provider = options[:provider] || "gaode"
-    usage_and_exit("geo 需要 <地址> 参数, 并指定 --baidu 或 --gaode") if ARGV.empty?
+    usage_and_exit("geo 需要 <地址> 参数") if ARGV.empty?
     configure_from_env(provider)
-    location = provider == "baidu" ? Coordconver::Baidu.geo_location(ARGV[0]) : Coordconver::Gaode.geo_location(ARGV[0])
+    Coordconver.configure { |c| c.cache = true } if options[:cache]
+    location = {
+      "baidu" => -> { Coordconver::Baidu.geo_location(ARGV[0]) },
+      "gaode" => -> { Coordconver::Gaode.geo_location(ARGV[0]) },
+      "tencent" => -> { Coordconver::Tencent.geo_location(ARGV[0]) }
+    }[provider].call
     if location
       emit(location, options)
     else
@@ -125,9 +197,14 @@ begin
     end
   when "regeo"
     provider = options[:provider] || "gaode"
-    usage_and_exit("regeo 需要 <lng> <lat> 参数, 并指定 --baidu 或 --gaode") if ARGV.size < 2
+    usage_and_exit("regeo 需要 <lng> <lat> 参数") if ARGV.size < 2
     configure_from_env(provider)
-    address = provider == "baidu" ? Coordconver::Baidu.regeo_address(Float(ARGV[0]), Float(ARGV[1])) : Coordconver::Gaode.regeo_address(Float(ARGV[0]), Float(ARGV[1]))
+    Coordconver.configure { |c| c.cache = true } if options[:cache]
+    address = {
+      "baidu" => -> { Coordconver::Baidu.regeo_address(Float(ARGV[0]), Float(ARGV[1])) },
+      "gaode" => -> { Coordconver::Gaode.regeo_address(Float(ARGV[0]), Float(ARGV[1])) },
+      "tencent" => -> { Coordconver::Tencent.regeo_address(Float(ARGV[0]), Float(ARGV[1])) }
+    }[provider].call
     if address
       puts address
     else
@@ -139,18 +216,26 @@ begin
     if ARGV.empty?
       usage_and_exit("需要 <lng> <lat> 参数, 或通过 stdin 管道输入批量坐标") if $stdin.tty?
 
+      converted = []
       $stdin.each_line do |line|
-        coords = line.split(/[,\s]+/).reject(&:empty?).map(&:to_f)
+        coords = line_coords(line, options[:csv])
         next if coords.size < 2
 
-        emit(Coordconver.public_send(method, coords[0], coords[1]), options)
+        pair = Coordconver.public_send(method, coords[0], coords[1])
+        if options[:geojson]
+          converted << pair
+        else
+          emit(pair, options)
+        end
       end
+      emit_features(converted, options) if options[:geojson]
     else
       coords = parse_coords(ARGV)
-      emit(Coordconver.public_send(method, coords[0], coords[1]), options)
+      pair = Coordconver.public_send(method, coords[0], coords[1])
+      options[:geojson] ? emit_features([pair], options) : emit(pair, options)
     end
   end
-rescue Coordconver::Error, ArgumentError, TypeError => e
+rescue Coordconver::Error, ArgumentError, TypeError, CSV::MalformedCSVError => e
   warn "错误: #{e.message}"
   exit 2
 end

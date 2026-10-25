@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.1.0 (2026-10-25)
+
+### 新增
+
+- **厘米级精确逆变换**：`gcj_wgs_precise` / `bd_wgs_precise`（迭代法，误差 < 1e-7 度），原 `gcj_wgs`/`bd_wgs` 保留为近似版本（米级）。
+- **球面几何**：`bearing`（初始方位角）、`destination_point`（沿方位角偏移点），与 `distance` 配套。
+- **灵活的入参/出参**：所有转换方法支持 `Point` 结构 / `[lng, lat]` / `{lng:, lat:}` 单参调用，以及 `as: :hash` / `as: :point` 返回格式；新增 `Coordconver.point` 与 `Coordconver::Point`。
+- **批量转换**：`Coordconver.transform(points, from:, to:, as:)`。
+- **WKT / GeoJSON 支持**：`parse_wkt` / `to_wkt` / `parse_geojson` / `to_geojson`，可与坐标转换自由组合。
+- **高斯-克吕格投影**：`gauss_kruger` / `inverse_gauss_kruger` 正反算（CGCS2000/WGS-84/北京54/西安80 椭球，往返精度优于 1cm），`zone_meridian` 3°/6° 带号与中央经线换算。
+- **腾讯位置服务支持**：`Coordconver::Tencent` 的 `geo` / `regeo` / `ip` 及便捷方法，与百度/高德同等的多 key 轮询能力。
+- **多 key 智能轮询**：从随机取样改为线程安全的 round-robin；识别配额超限/无效 key（百度 401/402/200/201/210，高德 10001/10003/10009/10044/20003，腾讯 110/112/120/121/199）后自动摘除并在冷却 5 分钟后恢复；全部 key 耗尽时抛出 `ApiError`。
+- **进程内 LRU 缓存**：`config.cache = true` 开启（可配 `cache_ttl`/`cache_size`），重复的地理编码请求不再消耗配额。
+- **高德官方坐标转换 API**：`Gaode.convert` / `convert_location`（GPS/百度 -> GCJ-02，单次最多 40 点）。
+- **CLI 增强**：新增 `bearing` / `dest` / `gk` / `invgk` 子命令；`--csv`（表头自动跳过）、`--geojson`、`--cache`、`--tencent` 选项。
+- **在线试用页**：`docs/` 目录新增纯前端 demo（GitHub Pages 托管），坐标转换/度分秒/距离方位角/高斯-克吕格算法的 JS 移植与 gem 数值一致，无需安装即可体验。
+- 英文文档 `README.en.md`。
+
+### 变更
+
+- 百度/高德/腾讯 API 请求统一经 `Geo::Api` 调度层（缓存 + key 轮换），行为对调用方透明。
+- `Configuration.reset!` 现在会同时重置 key 轮询状态与缓存。
+
 ## 1.0.0 (2026-10-25)
 
 ### 修复

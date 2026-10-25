@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["chenwei"]
   spec.email = ["cheenwe@gmail.com"]
 
-  spec.summary = "百度(BD-09)/火星(GCJ-02)/地球(WGS-84)坐标系互转、度分秒互转、两点距离, 以及百度/高德地理编码"
-  spec.description = "提供百度坐标(BD-09)、国测局坐标(GCJ-02)、地球坐标(WGS-84)之间的纯离线互转, 经纬度与度分秒互转, 两点球面距离计算; 并封装百度/高德 Web 服务 API 实现地址与坐标的相互转换。附带命令行工具。"
+  spec.summary = "百度(BD-09)/火星(GCJ-02)/地球(WGS-84)坐标系互转、球面几何、高斯-克吕格投影, 以及百度/高德/腾讯地理编码"
+  spec.description = "纯离线实现百度坐标(BD-09)、国测局坐标(GCJ-02)、地球坐标(WGS-84)互转(含厘米级精确逆变换), 两点距离/方位角/偏移点, 经纬度与度分秒互转, WKT/GeoJSON 互转, 高斯-克吕格投影正反算; 并封装百度/高德/腾讯 Web 服务 API 实现地址与坐标互转, 支持多 key 自动轮询与进程内缓存。附带命令行工具。"
   spec.homepage = "https://github.com/cheenwe/coordconver"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 2.7"
